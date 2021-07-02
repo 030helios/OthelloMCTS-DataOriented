@@ -6,20 +6,27 @@
 using namespace std;
 
 mutex MtxBoard;
+vector<array<int8_t, BoardSize> *> availPtrs;
 vector<array<int8_t, BoardSize>> boards;
 array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> RdMoves;
 
 array<int8_t, BoardSize> *makeNewBoard(array<int8_t, BoardSize> *oldPtr)
 {
     lock_guard<mutex> lock(MtxBoard);
+    if (availPtrs.size())
+    {
+        array<int8_t, BoardSize> *newPtr = availPtrs.back();
+        *newPtr = *oldPtr;
+        availPtrs.pop_back();
+        return newPtr;
+    }
     boards.emplace_back(*oldPtr);
     return &boards.back();
 }
 void delBoard(array<int8_t, BoardSize> *boardPtr)
 {
     lock_guard<mutex> lock(MtxBoard);
-    *boardPtr = boards.back();
-    boards.pop_back();
+    availPtrs.emplace_back(boardPtr);
 }
 
 //continue exploring until time up
@@ -35,6 +42,7 @@ void Countdown(time_t timeLimit, Node *root)
 array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> board, int &thinkTime, int threadCount, Node *&root)
 {
     time_t timeLimit = time(0) + thinkTime;
+    root->clean();
     //initialize thread
     vector<thread> threadvec;
     for (int i = 0; i < threadCount; i++)
@@ -57,7 +65,6 @@ array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> board, int &thinkTime,
     else
         cout << "Winner: " << (root->gameover == 1 ? "Black\n" : "White\n");
     root = root->getbest();
-    root->clean();
     return *root->board;
 }
 
@@ -102,6 +109,7 @@ int main()
     while (won(board)[1] == 0)
     {
         cout << "size " << boards.size() << endl;
+        cout << "spare " << availPtrs.size() << endl;
         cout << "Round " << index << endl;
         printboard(board, ImgName + to_string(index++) + ".jpg");
         board = GetStep(board, timeLimit, threadCount, root);

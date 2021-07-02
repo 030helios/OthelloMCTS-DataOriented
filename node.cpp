@@ -33,8 +33,6 @@ void Node::clean()
 {
     totalscore = 0;
     totalgames = 0;
-    if (moveIndex < 0)
-        delBoard(board);
     for (auto &child : children)
         child.clean();
 }
@@ -53,6 +51,7 @@ int8_t Node::explore()
             if (!newMove(*child->board, col, RdId, moveIndex))
                 if (children.size() > 1)
                 { // has children
+                    child->erase();
                     children.pop_back();
                     child = select();
                 }
