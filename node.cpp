@@ -3,19 +3,7 @@
 using namespace std;
 
 Node::Node() {}
-Node::Node(const Node &t)
-{
-    col = t.col;
-    RdId = t.RdId;
-    board = t.board;
-}
-Node::Node(array<int8_t, BoardSize> &bd, int8_t co)
-{
-    col = co;
-    RdId = rand() % BoardSize;
-    board = bd;
-}
-//return UCB
+Node::Node(array<int8_t, BoardSize> *bdPtr, int8_t co) : board(bdPtr), col(co), RdId(rand() % BoardSize) {}
 float Node::UCB(int &N, int8_t parentColor)
 {
     if (gameover != -2)
@@ -24,20 +12,29 @@ float Node::UCB(int &N, int8_t parentColor)
             if (!totalgames)
                 return 512;
             else
-                return 1 / 2 + sqrt(2 * log(N) / (float)totalgames);
+                return 0.5 + sqrt(2 * log(N) / (float)totalgames);
         return 1024 * parentColor * gameover;
     }
     if (!totalgames)
         return 512;
     float a = sqrt(2 * log(N) / (float)totalgames);
-    a += ((float)(totalgames - wins) / (totalgames));
+    a += parentColor * ((float)(totalscore) / (totalgames * 2)) + 0.5;
     return a;
+}
+//marks the pointers as availible
+void Node::erase()
+{
+    delBoard(board);
+    for (auto &child : children)
+        child.erase();
 }
 //removes data without removing the structure
 void Node::clean()
 {
-    wins = 0;
+    totalscore = 0;
     totalgames = 0;
+    if (moveIndex < 0)
+        delBoard(board);
     for (auto &child : children)
         child.clean();
 }
@@ -51,18 +48,18 @@ int8_t Node::explore()
         totalgames++;
         if (moveIndex >= 0)
         {
-            children.emplace_back(board, -col);
+            children.emplace_back(makeNewBoard(board), -col);
             child = &children.back();
-            if (!newMove(children.back().board, col, RdId, moveIndex)) //searched
+            if (!newMove(*child->board, col, RdId, moveIndex))
                 if (children.size() > 1)
                 { // has children
                     children.pop_back();
                     child = select();
                 }
-                else if (!hasMove(board, -col))
+                else if (!hasMove(*board, -col))
                 { //won
                     gameover = 0;
-                    for (auto stone : board)
+                    for (auto stone : *board)
                         gameover += stone;
                     gameover = (gameover > 0) - (gameover < 0);
                     return gameover;
@@ -73,7 +70,7 @@ int8_t Node::explore()
     }
     int8_t outcome = child->explore();
     lock_guard<mutex> lock(mtx);
-    wins += (outcome == col);
+    totalscore += outcome;
     return outcome;
 }
 //return greatest UCB child number
@@ -115,23 +112,14 @@ Node *Node::getbest()
             imax = i;
     }
     for (int i = 0; i < imax; i++)
-        children.pop_front();
-    children.resize(1);
-    return &children.front();
-}
-//returns child that matches the input
-Node *Node::playermove(array<int8_t, BoardSize> &target)
-{
-    if (target != board)
-        while (children.size())
-            if (children.front().board != target)
-                children.pop_front();
-            else
-                break;
-    if (children[0].board == target)
     {
-        children.resize(1);
-        return &children[0];
+        children.front().erase();
+        children.pop_front();
     }
-    return this;
+    while (children.size() != 1)
+    {
+        children.back().erase();
+        children.pop_back();
+    }
+    return &children.front();
 }

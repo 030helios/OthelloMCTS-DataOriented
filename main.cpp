@@ -1,25 +1,40 @@
 #include "func.h"
 #include "node.h"
-#include <time.h>
+#include <vector>
 #include <thread>
-#include <stdlib.h>
 #include <iostream>
 using namespace std;
+
+mutex MtxBoard;
+vector<array<int8_t, BoardSize>> boards;
 array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> RdMoves;
+
+array<int8_t, BoardSize> *makeNewBoard(array<int8_t, BoardSize> *oldPtr)
+{
+    lock_guard<mutex> lock(MtxBoard);
+    boards.emplace_back(*oldPtr);
+    return &boards.back();
+}
+void delBoard(array<int8_t, BoardSize> *boardPtr)
+{
+    lock_guard<mutex> lock(MtxBoard);
+    *boardPtr = boards.back();
+    boards.pop_back();
+}
 
 //continue exploring until time up
 void Countdown(time_t timeLimit, Node *root)
 {
     while (time(0) < timeLimit)
+    {
         root->explore();
+    }
     return;
 }
 
 array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> board, int &thinkTime, int threadCount, Node *&root)
 {
     time_t timeLimit = time(0) + thinkTime;
-    root = root->playermove(board);
-    root->clean();
     //initialize thread
     vector<thread> threadvec;
     for (int i = 0; i < threadCount; i++)
@@ -33,16 +48,17 @@ array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> board, int &thinkTime,
     {
         cout << (root->col == 1 ? "Black " : "White ");
         root = root->getbest();
-        float winrate = float(root->wins) / root->totalgames;
+        float winrate = float(root->totalscore) / (2 * root->totalgames) + 0.5;
         cout << "winrate estimate: " << 1 - winrate << endl;
-        return root->board;
+        return *root->board;
     }
     else if (root->gameover == 0)
         cout << "Draw\n";
     else
         cout << "Winner: " << (root->gameover == 1 ? "Black\n" : "White\n");
     root = root->getbest();
-    return root->board;
+    root->clean();
+    return *root->board;
 }
 
 void init(array<int8_t, BoardSize> &board)
@@ -76,13 +92,16 @@ int main()
 
     array<int8_t, BoardSize> board{};
     init(board);
+    boards.reserve(10000000);
+    boards.push_back(board);
 
-    Node Source(board, computerColor);
+    Node Source(&boards.front(), computerColor);
     Node *root = &Source;
     string ImgName = "Output_";
     int index = 0;
     while (won(board)[1] == 0)
     {
+        cout << "size " << boards.size() << endl;
         cout << "Round " << index << endl;
         printboard(board, ImgName + to_string(index++) + ".jpg");
         board = GetStep(board, timeLimit, threadCount, root);
