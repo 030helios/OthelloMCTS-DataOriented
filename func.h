@@ -3,14 +3,10 @@
 #include "config"
 #include <array>
 #include <vector>
-#include <random>
 #include <cstring>
 using namespace std;
 
 extern array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> RdMoves;
-
-void delBoard(array<int8_t, BoardSize> * boardPtr);
-array<int8_t, BoardSize> * makeNewBoard(array<int8_t, BoardSize> *oldPtr);
 
 int toleft(array<int8_t, BoardSize> &board, int8_t &col, int i, int j);
 int toright(array<int8_t, BoardSize> &board, int8_t &col, int i, int j);

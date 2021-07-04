@@ -1,35 +1,47 @@
 #ifndef __node_h__
 #define __node_h__
 #include "config"
-#include <mutex>
+#include <set>
+#include <array>
 #include <deque>
 #include <math.h>
-#include <utility>
-#include <algorithm>
+#include <random>
+#include <vector>
+#include <semaphore.h>
 using namespace std;
 
 struct Node
 {
-    mutex mtx;
-    int8_t col;
-    int8_t RdId;
+    sem_t lock;
+    set<int> availible;
 
-    int8_t moveIndex = BoardSize - 1;
-    int8_t gameover = -2;
-    int totalscore = 0;
-    int totalgames = 0;
-    array<int8_t, BoardSize> *board;
-    deque<Node> children;
+    vector<sem_t> sem;
+    vector<int8_t> color;
+    vector<int8_t> RdId;
 
-    Node();
-    Node(array<int8_t, BoardSize> *bdPtr, int8_t col);
+    vector<int8_t> moveIndex;
+    vector<int8_t> gameover;
+    vector<int> score;
+    vector<int> totalgames;
 
-    float UCB(int &N, int8_t co);
+    vector<deque<int>> children;
+
+    vector<array<int8_t, BoardSize>> board;
 
     void clean();
-    void erase();
-    int8_t explore();
-    Node *select();
-    Node *getbest();
+    int newNode(int id, int8_t col);
+    void delNode(int id);
+    void delNodehelper(int id);
+
+    float UCB(int id, int &N, int8_t co);
+
+    int8_t getNewChild(int id);
+    int8_t select(int id);
+
+    int8_t explore(int id);
+
+    int8_t getbest(int id);
+    int playermove(int id, array<int8_t, BoardSize> &target);
 };
+
 #endif
