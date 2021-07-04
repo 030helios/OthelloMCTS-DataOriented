@@ -9,13 +9,13 @@ using namespace std;
 
 array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> RdMoves;
 //continue exploring until time up
-void Countdown(time_t timeLimit, Node *root, int id)
+void Countdown(time_t timeLimit, Nodes *root, int id)
 {
     while (time(0) < timeLimit)
         root->explore(id);
 }
 
-array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> target, int &thinkTime, int threadCount, Node *root, int &id)
+array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> target, int &thinkTime, int threadCount, Nodes *root, int &id)
 {
     time_t timeLimit = time(0) + thinkTime;
     id = root->playermove(id, target);
@@ -77,18 +77,7 @@ int main()
     array<int8_t, BoardSize> board{};
     init(board);
 
-    Node root;
-    sem_init(&root.lock, 0, 1);
-    sem_init(&root.sem.front(), 0, 1);
-    root.sem.emplace_back();
-    root.color.emplace_back(computerColor);
-    root.RdId.emplace_back(rand() % BoardSize);
-    root.moveIndex.emplace_back(BoardSize - 1);
-    root.gameover.emplace_back(-2);
-    root.score.emplace_back(0);
-    root.totalgames.emplace_back(0);
-    root.children.emplace_back();
-    root.board.emplace_back(board);
+    Nodes root(computerColor, board);
 
     string ImgName = "Output_";
     int index = 0;

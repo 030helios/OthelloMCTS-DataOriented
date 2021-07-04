@@ -4,15 +4,16 @@
 #include <set>
 #include <array>
 #include <deque>
+#include <mutex>
 #include <math.h>
 #include <random>
 #include <vector>
 #include <semaphore.h>
 using namespace std;
 
-struct Node
+struct Nodes
 {
-    sem_t lock;
+    mutex mtx;
     set<int> availible;
 
     vector<sem_t> sem;
@@ -28,19 +29,22 @@ struct Node
 
     vector<array<int8_t, BoardSize>> board;
 
+    Nodes();
+    Nodes(int computerColor, array<int8_t, BoardSize> bd);
+
     void clean();
     int newNode(int id, int8_t col);
     void delNode(int id);
     void delNodehelper(int id);
 
-    float UCB(int id, int &N, int8_t co);
+    float UCB(int id, int N, int8_t co);
 
-    int8_t getNewChild(int id);
-    int8_t select(int id);
+    int getNewChild(int id);
+    int select(int id);
 
-    int8_t explore(int id);
+    int explore(int id);
 
-    int8_t getbest(int id);
+    int getbest(int id);
     int playermove(int id, array<int8_t, BoardSize> &target);
 };
 

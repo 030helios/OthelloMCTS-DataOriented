@@ -1,29 +1,50 @@
 #include "func.h"
 #include "node.h"
+#include <iostream>
 using namespace std;
 
-void Node::clean()
+Nodes::Nodes() {}
+
+Nodes::Nodes(int computerColor, array<int8_t, BoardSize> bd)
+{
+    sem_t newSem;
+    sem.push_back(newSem);
+    sem_init(&sem.back(), 0, 1);
+    color.emplace_back(computerColor);
+    RdId.emplace_back(rand() % BoardSize);
+    moveIndex.emplace_back(BoardSize - 1);
+    gameover.emplace_back(-2);
+    score.emplace_back(0);
+    totalgames.emplace_back(0);
+    children.emplace_back(deque<int>());
+    board.emplace_back(bd);
+}
+
+void Nodes::clean()
 {
     fill(totalgames.begin(), totalgames.end(), 0);
     fill(score.begin(), score.end(), 0);
 }
-int Node::newNode(int id, int8_t col)
+int Nodes::newNode(int id, int8_t col)
 {
-    sem_wait(&lock);
+    lock_guard<mutex> lock(mtx);
     if (availible.size())
     {
         int i = *availible.begin();
+        availible.erase(i);
         color[i] = col;
         RdId[i] = rand() % BoardSize;
         moveIndex[i] = BoardSize - 1;
         gameover[i] = -2;
+        score[i] = 0;
+        totalgames[i] = 0;
+        children[i].clear();
         board[i] = board[id];
-        deque<int>().swap(children[i]);
-        sem_post(&lock);
         return i;
     }
     int i = color.size();
-    sem.emplace_back();
+    sem_t newSem;
+    sem.push_back(newSem);
     sem_init(&sem.back(), 0, 1);
     color.emplace_back(col);
     RdId.emplace_back(rand() % BoardSize);
@@ -31,25 +52,24 @@ int Node::newNode(int id, int8_t col)
     gameover.emplace_back(-2);
     score.emplace_back(0);
     totalgames.emplace_back(0);
-    children.emplace_back();
+    deque<int> newchildren;
+    children.push_back(newchildren);
     board.emplace_back(board[id]);
-    sem_post(&lock);
     return i;
 }
-void Node::delNode(int id)
+void Nodes::delNode(int id)
 {
-    sem_wait(&lock);
+    lock_guard<mutex> lock(mtx);
     delNodehelper(id);
-    sem_post(&lock);
 }
-void Node::delNodehelper(int id)
+void Nodes::delNodehelper(int id)
 {
     availible.insert(id);
     for (int child : children[id])
         delNodehelper(child);
 }
 
-float Node::UCB(int id, int &N, int8_t parentColor)
+float Nodes::UCB(int id, int N, int8_t parentColor)
 {
     if (gameover[id] != -2)
         if (gameover[id] != 0)
@@ -60,23 +80,30 @@ float Node::UCB(int id, int &N, int8_t parentColor)
     a += 0.5 + (float)(score[id]) / (parentColor * 2 * totalgames[id]);
     return a;
 }
-int8_t Node::getNewChild(int id)
+int Nodes::getNewChild(int id)
 {
-    children[id].emplace_back(newNode(id, -color[id]));
-    if (newMove(board[children[id].back()], color[id], RdId[id], moveIndex[id]))
-        return children[id].back();
+    int childID = newNode(id, -color[id]);
+    children[id].emplace_back(childID);
+    if (newMove(board[childID], color[id], RdId[id], moveIndex[id]))
+        return childID;
     else if (children.size() > 1) // has children
+    {
+        delNode(childID);
         children[id].pop_back();
-    else if (!hasMove(board[children[id].back()], -color[id])) //won
+    }
+    else if (!hasMove(board[childID], -color[id])) //won
+    {
+        delNode(childID);
         children[id].pop_back();
+    }
     else //pass
-        return children[id].back();
+        return childID;
     return -1;
 }
-int8_t Node::select(int id)
+int Nodes::select(int id)
 {
     float ucbmax = -INFINITY;
-    int8_t best = -1;
+    int best = -1;
     for (auto child : children[id])
     {
         sem_wait(&sem[child]);
@@ -97,9 +124,9 @@ int8_t Node::select(int id)
     return best;
 }
 
-int8_t Node::explore(int id)
+int Nodes::explore(int id)
 {
-    int8_t child = -1;
+    int child = -1;
     sem_wait(&sem[id]);
     totalgames[id]++;
     if (gameover[id] != -2 && gameover[id] != 0)
@@ -122,7 +149,7 @@ int8_t Node::explore(int id)
     }
     sem_post(&sem[id]);
 
-    int8_t outcome = explore(child);
+    int outcome = explore(child);
     sem_wait(&sem[id]);
     score[id] += outcome;
     if (gameover[id] != -2 && gameover[id] != 0)
@@ -134,34 +161,39 @@ int8_t Node::explore(int id)
     return outcome;
 }
 //return best board
-int8_t Node::getbest(int id)
+int Nodes::getbest(int id)
 {
-    int8_t best = children[id].front();
+    int best = children[id].front();
     for (auto child : children[id])
         if (totalgames[child] > totalgames[best])
             best = child;
     for (auto child : children[id])
         if (gameover[child] == color[id])
             best = child;
-    while (children[id].front() != best)
-        delNode(children[id].front());
-    children.resize(1);
+    for (auto child : children[id])
+        if (child != best)
+            delNode(child);
+    deque<int>().swap(children[id]);
     return best;
 }
 
 //returns child that matches the input
-int Node::playermove(int id, array<int8_t, BoardSize> &target)
+int Nodes::playermove(int id, array<int8_t, BoardSize> &target)
 {
     if (target != board[id])
         while (children[id].size())
             if (board[children[id].front()] != target)
+            {
+                delNode(children[id].front());
                 children[id].pop_front();
+            }
             else
                 break;
-    if (board[children[id].front()] == target)
-    {
-        children[id].resize(1);
-        return children[id][0];
-    }
+    if (children[id].size())
+        if (board[children[id].front()] == target)
+        {
+            children[id].resize(1);
+            return children[id][0];
+        }
     return id;
 }
