@@ -8,6 +8,15 @@ Nodes::Nodes() {}
 
 Nodes::Nodes(int computerColor, array<int8_t, BoardSize> bd)
 {
+    sem.reserve(MaxSize);
+    color.reserve(MaxSize);
+    shuffleID.reserve(MaxSize);
+    moveIndex.reserve(MaxSize);
+    gameover.reserve(MaxSize);
+    totalScore.reserve(MaxSize);
+    totalGames.reserve(MaxSize);
+    children.reserve(MaxSize);
+    board.reserve(MaxSize);
 
     sem_t newSem;
     sem.push_back(newSem);
@@ -18,7 +27,7 @@ Nodes::Nodes(int computerColor, array<int8_t, BoardSize> bd)
     gameover.emplace_back(-2);
     totalScore.emplace_back(0);
     totalGames.emplace_back(0);
-    children.emplace_back(deque<int>());
+    children.emplace_back(vector<int>());
     board.emplace_back(bd);
 }
 
@@ -40,7 +49,7 @@ int Nodes::newNode(int id, int8_t col)
         gameover[i] = -2;
         totalScore[i] = 0;
         totalGames[i] = 0;
-        children[i].clear();
+        vector<int>().swap(children[i]);
         board[i] = board[id];
         return i;
     }
@@ -54,7 +63,7 @@ int Nodes::newNode(int id, int8_t col)
     gameover.emplace_back(-2);
     totalScore.emplace_back(0);
     totalGames.emplace_back(0);
-    deque<int> newchildren;
+    vector<int> newchildren;
     children.push_back(newchildren);
     board.emplace_back(board[id]);
     return i;
@@ -89,7 +98,7 @@ int Nodes::getNewChild(int id)
     children[id].emplace_back(childID);
     if (newMove(board[childID], color[id], shuffleID[id], moveIndex[id]))
         return childID;
-    else if (children.size() > 1) // has children
+    else if (children[id].size() > 1) // has children
     {
         delNode(childID);
         children[id].pop_back();
@@ -184,7 +193,7 @@ int Nodes::getbest(int id)
     for (auto child : children[id])
         if (child != best)
             delNode(child);
-    deque<int>().swap(children[id]);
+    vector<int>().swap(children[id]);
     return best;
 }
 
@@ -193,13 +202,16 @@ int Nodes::playermove(int id, array<int8_t, BoardSize> &target)
 {
     if (target != board[id])
         while (children[id].size())
-            if (board[children[id].front()] != target)
+            if (board[children[id].back()] != target)
             {
-                delNode(children[id].front());
-                children[id].pop_front();
+                delNode(children[id].back());
+                children[id].pop_back();
             }
             else
+            {
+                swap(children[id].front(), children[id].back());
                 break;
+            }
     if (children[id].size())
         if (board[children[id].front()] == target)
         {

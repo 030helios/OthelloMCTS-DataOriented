@@ -1,18 +1,24 @@
 #include "config"
 #include "func.h"
 #include "node.h"
+#include <chrono>
 #include <time.h>
 #include <thread>
 #include <iostream>
 #include <algorithm>
 using namespace std;
+using namespace chrono;
 
 array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> shuffledMoves;
 //continue exploring until time up
-void Countdown(time_t timeLimit, Nodes *root, int id)
+void countdown(system_clock::time_point start, milliseconds thinkTime, float depth, int threadCount, Nodes *root, int id)
 {
-    while (time(0) < timeLimit)
-        root->explore(id, 2);
+    milliseconds timepast;
+    do
+    {
+        timepast = duration_cast<milliseconds>(system_clock::now() - start);
+        root->explore(id, round(depth - log(timepast.count() * threadCount) / log(EdgeSize)));
+    } while (timepast < thinkTime);
 }
 //calls /Storage/printBoard.py
 void printboard(array<int8_t, BoardSize> board, string name)
@@ -26,13 +32,14 @@ void printboard(array<int8_t, BoardSize> board, string name)
 }
 array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> target, int &thinkTime, int threadCount, Nodes *root, int &id)
 {
-    time_t timeLimit = time(0) + thinkTime;
+    system_clock::time_point start = system_clock::now();
+    float depth = log(thinkTime * 1000 * threadCount) / log(EdgeSize) + 0.5;
     id = root->playermove(id, target);
     root->clean();
     //initialize thread
     vector<thread> threadvec;
     for (int i = 0; i < threadCount; i++)
-        threadvec.emplace_back(Countdown, timeLimit, root, id);
+        threadvec.emplace_back(countdown, start, seconds(thinkTime), depth, threadCount, root, id);
     //after 5 seconds
     for (int i = 0; i < threadCount; i++)
         threadvec[i].join();

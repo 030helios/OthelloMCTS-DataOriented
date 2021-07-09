@@ -2,7 +2,6 @@
 #define __node_h__
 #include "config"
 #include <array>
-#include <deque>
 #include <mutex>
 #include <math.h>
 #include <random>
@@ -24,7 +23,7 @@ struct Nodes
     vector<int> totalScore;
     vector<int> totalGames;
 
-    vector<deque<int>> children;
+    vector<vector<int>> children;
 
     vector<array<int8_t, BoardSize>> board;
 
