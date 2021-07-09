@@ -1,7 +1,6 @@
 #ifndef __node_h__
 #define __node_h__
 #include "config"
-#include <set>
 #include <array>
 #include <deque>
 #include <mutex>
@@ -14,16 +13,16 @@ using namespace std;
 struct Nodes
 {
     mutex mtx;
-    set<int> availible;
+    vector<int> availible;
 
     vector<sem_t> sem;
     vector<int8_t> color;
-    vector<int8_t> RdId;
+    vector<int8_t> shuffleID;
 
     vector<int8_t> moveIndex;
     vector<int8_t> gameover;
-    vector<int> score;
-    vector<int> totalgames;
+    vector<int> totalScore;
+    vector<int> totalGames;
 
     vector<deque<int>> children;
 
@@ -42,7 +41,7 @@ struct Nodes
     int getNewChild(int id);
     int select(int id);
 
-    int explore(int id);
+    int explore(int id, int8_t heat);
 
     int getbest(int id);
     int playermove(int id, array<int8_t, BoardSize> &target);

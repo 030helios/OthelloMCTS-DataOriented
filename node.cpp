@@ -1,43 +1,45 @@
 #include "func.h"
 #include "node.h"
 #include <iostream>
+#include <bits/stdc++.h>
 using namespace std;
 
 Nodes::Nodes() {}
 
 Nodes::Nodes(int computerColor, array<int8_t, BoardSize> bd)
 {
+
     sem_t newSem;
     sem.push_back(newSem);
     sem_init(&sem.back(), 0, 1);
     color.emplace_back(computerColor);
-    RdId.emplace_back(rand() % BoardSize);
+    shuffleID.emplace_back(rand() % BoardSize);
     moveIndex.emplace_back(BoardSize - 1);
     gameover.emplace_back(-2);
-    score.emplace_back(0);
-    totalgames.emplace_back(0);
+    totalScore.emplace_back(0);
+    totalGames.emplace_back(0);
     children.emplace_back(deque<int>());
     board.emplace_back(bd);
 }
 
 void Nodes::clean()
 {
-    fill(totalgames.begin(), totalgames.end(), 0);
-    fill(score.begin(), score.end(), 0);
+    fill(totalGames.begin(), totalGames.end(), 0);
+    fill(totalScore.begin(), totalScore.end(), 0);
 }
 int Nodes::newNode(int id, int8_t col)
 {
     lock_guard<mutex> lock(mtx);
     if (availible.size())
     {
-        int i = *availible.begin();
-        availible.erase(i);
+        int i = availible.back();
+        availible.pop_back();
         color[i] = col;
-        RdId[i] = rand() % BoardSize;
+        shuffleID[i] = rand() % BoardSize;
         moveIndex[i] = BoardSize - 1;
         gameover[i] = -2;
-        score[i] = 0;
-        totalgames[i] = 0;
+        totalScore[i] = 0;
+        totalGames[i] = 0;
         children[i].clear();
         board[i] = board[id];
         return i;
@@ -47,11 +49,11 @@ int Nodes::newNode(int id, int8_t col)
     sem.push_back(newSem);
     sem_init(&sem.back(), 0, 1);
     color.emplace_back(col);
-    RdId.emplace_back(rand() % BoardSize);
+    shuffleID.emplace_back(rand() % BoardSize);
     moveIndex.emplace_back(BoardSize - 1);
     gameover.emplace_back(-2);
-    score.emplace_back(0);
-    totalgames.emplace_back(0);
+    totalScore.emplace_back(0);
+    totalGames.emplace_back(0);
     deque<int> newchildren;
     children.push_back(newchildren);
     board.emplace_back(board[id]);
@@ -64,7 +66,8 @@ void Nodes::delNode(int id)
 }
 void Nodes::delNodehelper(int id)
 {
-    availible.insert(id);
+    availible.push_back(id);
+    push_heap(availible.begin(), availible.end());
     for (int child : children[id])
         delNodehelper(child);
 }
@@ -75,16 +78,16 @@ float Nodes::UCB(int id, int N, int8_t parentColor)
         if (gameover[id] != 0)
             return N * parentColor * gameover[id];
         else
-            return 0.5 + sqrt(2 * log(N) / (float)totalgames[id]);
-    float a = sqrt(2 * log(N) / (float)totalgames[id]);
-    a += 0.5 + (float)(score[id]) / (parentColor * 2 * totalgames[id]);
+            return 0.5 + sqrt(2 * log(N) / (float)totalGames[id]);
+    float a = sqrt(2 * log(N) / (float)totalGames[id]);
+    a += 0.5 + (float)(totalScore[id]) / (parentColor * 2 * totalGames[id]);
     return a;
 }
 int Nodes::getNewChild(int id)
 {
     int childID = newNode(id, -color[id]);
     children[id].emplace_back(childID);
-    if (newMove(board[childID], color[id], RdId[id], moveIndex[id]))
+    if (newMove(board[childID], color[id], shuffleID[id], moveIndex[id]))
         return childID;
     else if (children.size() > 1) // has children
     {
@@ -107,12 +110,12 @@ int Nodes::select(int id)
     for (auto child : children[id])
     {
         sem_wait(&sem[child]);
-        if (totalgames[child] == 0)
+        if (totalGames[child] == 0)
         {
             sem_post(&sem[child]);
             return child;
         }
-        float ucb = UCB(child, totalgames[id], color[id]);
+        float ucb = UCB(child, totalGames[id], color[id]);
         if (ucb > ucbmax)
         {
             ucbmax = ucb;
@@ -124,20 +127,28 @@ int Nodes::select(int id)
     return best;
 }
 
-int Nodes::explore(int id)
+int Nodes::explore(int id, int8_t heat)
 {
     int child = -1;
     sem_wait(&sem[id]);
-    totalgames[id]++;
+    totalGames[id]++;
     if (gameover[id] != -2 && gameover[id] != 0)
     {
         sem_post(&sem[id]);
         return gameover[id];
     }
+    if (heat == 0)
+    {
+        totalScore[id] = playout(board[id], color[id]);
+        sem_post(&sem[id]);
+        return totalScore[id];
+    }
     if (moveIndex[id] >= 0)
         child = getNewChild(id);
     if (child == -1)
         child = select(id);
+    else
+        heat--;
     if (child == -1)
     { //won
         gameover[id] = 0;
@@ -149,13 +160,13 @@ int Nodes::explore(int id)
     }
     sem_post(&sem[id]);
 
-    int outcome = explore(child);
+    int outcome = explore(child, heat);
     sem_wait(&sem[id]);
-    score[id] += outcome;
+    totalScore[id] += outcome;
     if (gameover[id] != -2 && gameover[id] != 0)
     {
-        outcome = totalgames[id] * gameover[id] - score[id];
-        score[id] = gameover[id] * totalgames[id];
+        outcome = totalGames[id] * gameover[id] - totalScore[id];
+        totalScore[id] = gameover[id] * totalGames[id];
     }
     sem_post(&sem[id]);
     return outcome;
@@ -165,7 +176,7 @@ int Nodes::getbest(int id)
 {
     int best = children[id].front();
     for (auto child : children[id])
-        if (totalgames[child] > totalgames[best])
+        if (totalGames[child] > totalGames[best])
             best = child;
     for (auto child : children[id])
         if (gameover[child] == color[id])
