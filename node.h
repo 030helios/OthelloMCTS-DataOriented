@@ -6,7 +6,7 @@
 #include <semaphore.h>
 using namespace std;
 
-struct Node
+struct Nodes
 {
     sem_t mtx;
 
@@ -16,14 +16,12 @@ struct Node
     vector<int8_t> moveIndex;
     vector<int> totalScore;
     vector<int> totalGames;
-
     vector<vector<int>> children;
-
     vector<array<int8_t, BoardSize>> board;
 
-    Node(int size);
-    Node(int8_t computerColor, array<int8_t, BoardSize> bd, int size);
-
+    Nodes(int size);
+    //returns last index
+    int push_back(int8_t computerColor, array<int8_t, BoardSize> bd);
     float UCB(int id, int parentTotal, int8_t parentColor);
 };
 

@@ -13,7 +13,8 @@ Bot::Bot(int tLimit, int thrCount, array<int8_t, BoardSize> board, int8_t color)
     sem_init(&BotSem, 0, 1);
     depth = log(timeLimit.count() * thrCount) / log(EdgeSize) + 0.5;
     tree.reserve(BoardSize);
-    tree.emplace_back(color, board, 1);
+    tree.emplace_back(1);
+    tree[0].push_back(color, board);
 }
 //continue exploring until time up
 void Bot::countdown(system_clock::time_point start, milliseconds thinkTime, float depth, int threadCount, Bot *bot)
@@ -59,22 +60,7 @@ int Bot::newNode(int tier, int id, int8_t col)
         else
             tree.emplace_back((int)pow((BoardSize / 2), next));
     sem_post(&BotSem);
-
-    sem_wait(&tree[next].mtx);
-
-    int childID = tree[next].color.size();
-    tree[next].sem.emplace_back();
-    sem_init(&tree[next].sem.back(), 0, 1);
-    tree[next].color.emplace_back(col);
-    tree[next].shuffleID.emplace_back(rand() % BoardSize);
-    tree[next].moveIndex.emplace_back(BoardSize - 1);
-    tree[next].totalScore.emplace_back(0);
-    tree[next].totalGames.emplace_back(0);
-    tree[next].children.emplace_back();
-    tree[next].board.emplace_back(self(board));
-
-    sem_post(&tree[next].mtx);
-    return childID;
+    return tree[next].push_back(col, self(board));
 }
 int Bot::getNewChild(int tier, int id)
 {

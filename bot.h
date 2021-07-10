@@ -10,7 +10,7 @@ using namespace chrono;
 struct Bot
 {
     sem_t BotSem;
-    vector<Node> tree;
+    vector<Nodes> tree;
     float depth;
     int threadCount;
     milliseconds timeLimit;
