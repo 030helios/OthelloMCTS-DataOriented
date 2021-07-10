@@ -6,7 +6,9 @@
 #include <cstring>
 using namespace std;
 
-extern array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> shuffledMoves;
+extern int8_t Ishuffled[BoardSize * BoardSize];
+extern int8_t Jshuffled[BoardSize * BoardSize];
+
 
 void tryleft(array<int8_t, BoardSize> &board, int8_t col, int8_t i, int8_t j, bool &legal);
 void tryright(array<int8_t, BoardSize> &board, int8_t col, int8_t i, int8_t j, bool &legal);

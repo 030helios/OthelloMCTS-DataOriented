@@ -9,17 +9,14 @@
 #include <semaphore.h>
 using namespace std;
 
-struct Nodes
+struct Node
 {
-    mutex mtx;
-    vector<int> availible;
+    sem_t mtx;
 
     vector<sem_t> sem;
     vector<int8_t> color;
     vector<int8_t> shuffleID;
-
     vector<int8_t> moveIndex;
-    vector<int8_t> gameover;
     vector<int> totalScore;
     vector<int> totalGames;
 
@@ -27,23 +24,11 @@ struct Nodes
 
     vector<array<int8_t, BoardSize>> board;
 
-    Nodes();
-    Nodes(int computerColor, array<int8_t, BoardSize> bd);
+    Node();
+    Node(int size);
+    Node(int8_t computerColor, array<int8_t, BoardSize> bd, int size);
 
-    void clean();
-    int newNode(int id, int8_t col);
-    void delNode(int id);
-    void delNodehelper(int id);
-
-    float UCB(int id, int N, int8_t co);
-
-    int getNewChild(int id);
-    int select(int id);
-
-    int explore(int id, int8_t heat);
-
-    int getbest(int id);
-    int playermove(int id, array<int8_t, BoardSize> &target);
+    float UCB(int id, int parentTotal, int8_t parentColor);
 };
 
 #endif

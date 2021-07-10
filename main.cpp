@@ -1,6 +1,7 @@
 #include "config"
 #include "func.h"
 #include "node.h"
+#include "bot.h"
 #include <chrono>
 #include <time.h>
 #include <thread>
@@ -9,17 +10,6 @@
 using namespace std;
 using namespace chrono;
 
-array<array<pair<int8_t, int8_t>, BoardSize>, BoardSize> shuffledMoves;
-//continue exploring until time up
-void countdown(system_clock::time_point start, milliseconds thinkTime, float depth, int threadCount, Nodes *root, int id)
-{
-    milliseconds timepast;
-    do
-    {
-        timepast = duration_cast<milliseconds>(system_clock::now() - start);
-        root->explore(id, round(depth - log(timepast.count() * threadCount) / log(EdgeSize)));
-    } while (timepast < thinkTime);
-}
 //calls /Storage/printBoard.py
 void printboard(array<int8_t, BoardSize> board, string name)
 {
@@ -30,36 +20,10 @@ void printboard(array<int8_t, BoardSize> board, string name)
     strcpy(exe, str.c_str());
     system(exe);
 }
-array<int8_t, BoardSize> GetStep(array<int8_t, BoardSize> target, int &thinkTime, int threadCount, Nodes *root, int &id)
-{
-    system_clock::time_point start = system_clock::now();
-    float depth = log(thinkTime * 1000 * threadCount) / log(EdgeSize) + 0.5;
-    id = root->playermove(id, target);
-    root->clean();
-    //initialize thread
-    vector<thread> threadvec;
-    for (int i = 0; i < threadCount; i++)
-        threadvec.emplace_back(countdown, start, seconds(thinkTime), depth, threadCount, root, id);
-    //after 5 seconds
-    for (int i = 0; i < threadCount; i++)
-        threadvec[i].join();
 
-    cout << "Total playouts: " << root->totalGames[id] << endl;
-    if (root->gameover[id] == -2 || root->gameover[id] == 0)
-    {
-        if (root->gameover[id] == 0)
-            cout << "Maybe Draw\n";
-        cout << (root->color[id] == 1 ? "Black " : "White ");
-        id = root->getbest(id);
-        float childUtility = float(root->totalScore[id] * root->color[id]) / (2 * root->totalGames[id]);
-        cout << "winrate estimate: " << 0.5 - childUtility << endl;
-        return root->board[id];
-    }
-    else
-        cout << "Winner: " << (root->gameover[id] == 1 ? "Black\n" : "White\n");
-    id = root->getbest(id);
-    return root->board[id];
-}
+//An array of shuffled arrays filled with indexes
+int8_t Ishuffled[BoardSize * BoardSize];
+int8_t Jshuffled[BoardSize * BoardSize];
 
 void init(array<int8_t, BoardSize> &board)
 {
@@ -68,15 +32,22 @@ void init(array<int8_t, BoardSize> &board)
     board[d - 1] = -1;
     board[d - EdgeSize] = -1;
     board[d - EdgeSize - 1] = 1;
-    srand(time(0));
-    array<pair<int8_t, int8_t>, BoardSize> defaultMoves;
+    srand(system_clock::to_time_t(system_clock::now()));
+
+    array<pair<int8_t, int8_t>, BoardSize> moves;
     for (int i = 0; i < EdgeSize; i++)
         for (int j = 0; j < EdgeSize; j++)
-            defaultMoves[i * EdgeSize + j] = make_pair(i, j);
-    for (auto &bd : shuffledMoves)
-        bd = defaultMoves;
-    for (auto &bd : shuffledMoves)
-        random_shuffle(bd.begin(), bd.end());
+            moves[i * EdgeSize + j] = make_pair(i, j);
+
+    for (int ind = 0; ind < BoardSize; ind++)
+    {
+        random_shuffle(moves.begin(), moves.end());
+        for (int i = 0; i < BoardSize; i++)
+        {
+            Ishuffled[ind * BoardSize + i] = moves[i].first;
+            Jshuffled[ind * BoardSize + i] = moves[i].second;
+        }
+    }
 }
 
 int main()
@@ -84,27 +55,27 @@ int main()
     int timeLimit;
     cout << "timeLimit :";
     cin >> timeLimit;
-    //black
-    int computerColor = 1;
     int threadCount;
     cout << "threadCount :";
     cin >> threadCount;
 
     array<int8_t, BoardSize> board{};
     init(board);
-
-    Nodes root(computerColor, board);
-
     string ImgName = "Output_";
     int index = 0;
     int id = 0;
+
+    //black
+    int computerColor = 1;
+    printboard(board, ImgName + to_string(index++) + ".jpg");
     while (hasMove(board, 1) || hasMove(board, -1))
     {
         cout << "Round " << index << endl;
+        Bot bot(timeLimit, threadCount, board, computerColor);
+        board = bot.play();
+        computerColor = -computerColor;
         printboard(board, ImgName + to_string(index++) + ".jpg");
-        board = GetStep(board, timeLimit, threadCount, &root, id);
     }
-    printboard(board, ImgName + to_string(index++) + ".jpg");
     cout << "Winner: " << (score(board) == 1 ? "Black" : "White") << endl;
     return 0;
 }
