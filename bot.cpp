@@ -53,7 +53,12 @@ int Bot::newNode(int tier, int id, int8_t col)
     int next = tier + 1;
     sem_wait(&BotSem);
     if (tree.size() == next)
-        tree.emplace_back(MaxSize);
+    {
+        if (log(MaxSize) / log(BoardSize / 2) < next)
+            tree.emplace_back(MaxSize);
+        else
+            tree.emplace_back((int)pow((BoardSize / 2), next));
+    }
     sem_post(&BotSem);
 
     sem_wait(&tree[next].mtx);
