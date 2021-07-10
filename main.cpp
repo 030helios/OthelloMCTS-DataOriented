@@ -3,7 +3,6 @@
 #include "node.h"
 #include "bot.h"
 #include <chrono>
-#include <time.h>
 #include <thread>
 #include <iostream>
 #include <algorithm>
@@ -25,8 +24,15 @@ void printboard(array<int8_t, BoardSize> board, string name)
 int8_t Ishuffled[BoardSize * BoardSize];
 int8_t Jshuffled[BoardSize * BoardSize];
 
-void init(array<int8_t, BoardSize> &board)
+int main()
 {
+    int timeLimit, threadCount;
+    cout << "timeLimit :";
+    cin >> timeLimit;
+    cout << "threadCount :";
+    cin >> threadCount;
+
+    array<int8_t, BoardSize> board{};
     int d = EdgeSize / 2 + EdgeSize * EdgeSize / 2;
     board[d] = 1;
     board[d - 1] = -1;
@@ -48,33 +54,17 @@ void init(array<int8_t, BoardSize> &board)
             Jshuffled[ind * BoardSize + i] = moves[i].second;
         }
     }
-}
-
-int main()
-{
-    int timeLimit;
-    cout << "timeLimit :";
-    cin >> timeLimit;
-    int threadCount;
-    cout << "threadCount :";
-    cin >> threadCount;
-
-    array<int8_t, BoardSize> board{};
-    init(board);
     string ImgName = "Output_";
     int index = 0;
-    int id = 0;
-
-    //black
-    int computerColor = 1;
-    printboard(board, ImgName + to_string(index++) + ".jpg");
+    int computerColor = 1; //black first
+    printboard(board, ImgName + to_string(index) + ".jpg");
     while (hasMove(board, 1) || hasMove(board, -1))
     {
         cout << "Round " << index << endl;
         Bot bot(timeLimit, threadCount, board, computerColor);
         board = bot.play();
         computerColor = -computerColor;
-        printboard(board, ImgName + to_string(index++) + ".jpg");
+        printboard(board, ImgName + to_string(++index) + ".jpg");
     }
     cout << "Winner: " << (score(board) == 1 ? "Black" : "White") << endl;
     return 0;

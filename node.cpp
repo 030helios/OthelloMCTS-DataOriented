@@ -1,13 +1,7 @@
 #include "func.h"
 #include "node.h"
-#include <iostream>
-#include <bits/stdc++.h>
+#include <math.h>
 using namespace std;
-
-Node::Node()
-{
-    sem_init(&mtx, 0, 1);
-}
 
 Node::Node(int size)
 {
@@ -45,7 +39,9 @@ Node::Node(int8_t computerColor, array<int8_t, BoardSize> bd, int size)
 }
 float Node::UCB(int id, int parentTotal, int8_t parentColor)
 {
+    sem_wait(&sem[id]);
     float a = sqrt(2 * log(parentTotal) / (float)totalGames[id]);
     a += 0.5 + (float)(totalScore[id]) / (parentColor * 2 * totalGames[id]);
+    sem_post(&sem[id]);
     return a;
 }

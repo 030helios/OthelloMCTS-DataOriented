@@ -1,8 +1,9 @@
 #include "bot.h"
 #include "func.h"
 #include <math.h>
+#include <random>
+#include <thread>
 #include <iostream>
-#include <algorithm>
 
 #define child(a) tree[next].a[childID]
 #define self(a) tree[tier].a[id]
@@ -53,25 +54,23 @@ int Bot::newNode(int tier, int id, int8_t col)
     int next = tier + 1;
     sem_wait(&BotSem);
     if (tree.size() == next)
-    {
         if (log(MaxSize) / log(BoardSize / 2) < next)
             tree.emplace_back(MaxSize);
         else
             tree.emplace_back((int)pow((BoardSize / 2), next));
-    }
     sem_post(&BotSem);
 
     sem_wait(&tree[next].mtx);
 
     int childID = tree[next].color.size();
-    tree[next].sem.push_back(sem_t());
+    tree[next].sem.emplace_back();
     sem_init(&tree[next].sem.back(), 0, 1);
     tree[next].color.emplace_back(col);
     tree[next].shuffleID.emplace_back(rand() % BoardSize);
     tree[next].moveIndex.emplace_back(BoardSize - 1);
     tree[next].totalScore.emplace_back(0);
     tree[next].totalGames.emplace_back(0);
-    tree[next].children.emplace_back(vector<int>());
+    tree[next].children.emplace_back();
     tree[next].board.emplace_back(self(board));
 
     sem_post(&tree[next].mtx);
@@ -99,14 +98,12 @@ int Bot::select(int tier, int id)
     int best = -1;
     for (auto childID : self(children))
     {
-        sem_wait(&child(sem));
         float ucb = tree[next].UCB(childID, self(totalGames), self(color));
         if (ucb > ucbmax)
         {
             ucbmax = ucb;
             best = childID;
         }
-        sem_post(&child(sem));
     }
     return best;
 }
