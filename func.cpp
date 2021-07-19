@@ -166,8 +166,8 @@ bool tryMove(array<int8_t, BoardSize> &board, int8_t col, int8_t i, int8_t j)
 //Returns true if we made a move
 bool newMove(array<int8_t, BoardSize> &board, int8_t col, int8_t shuffleID, int8_t &moveIndex)
 {
-    int8_t *I = &Ishuffled[shuffleID * BoardSize];
-    int8_t *J = &Jshuffled[shuffleID * BoardSize];
+    int8_t *I = &Ishuffled[shuffleID * moveSize];
+    int8_t *J = &Jshuffled[shuffleID * moveSize];
     while (!tryMove(board, col, I[moveIndex], J[moveIndex]))
         if (--moveIndex < 0)
             return false;
@@ -176,7 +176,7 @@ bool newMove(array<int8_t, BoardSize> &board, int8_t col, int8_t shuffleID, int8
 }
 bool hasMove(array<int8_t, BoardSize> board, int8_t col)
 {
-    int8_t moveIndex = BoardSize - 1;
+    int8_t moveIndex = moveSize - 1;
     return newMove(board, col, 0, moveIndex);
 }
 int score(array<int8_t, BoardSize> &board)
@@ -192,8 +192,8 @@ int playout(array<int8_t, BoardSize> board, int8_t col)
 {
     while (1)
     {
-        int8_t moveInd = BoardSize - 1;
-        if (!newMove(board, col, rand() % BoardSize, moveInd))
+        int8_t moveIndex = moveSize - 1;
+        if (!newMove(board, col, rand() % moveSize, moveIndex))
             if (!hasMove(board, -col))
                 break;
         col = -col;

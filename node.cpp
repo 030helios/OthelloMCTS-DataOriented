@@ -22,8 +22,8 @@ int Nodes::push_back(int8_t computerColor, array<int8_t, BoardSize> bd)
 
     sem.emplace_back();
     color.emplace_back(computerColor);
-    shuffleID.emplace_back(rand() % BoardSize);
-    moveIndex.emplace_back(BoardSize - 1);
+    shuffleID.emplace_back(rand() % moveSize);
+    moveIndex.emplace_back(moveSize - 1);
     totalScore.emplace_back(0);
     totalGames.emplace_back(0);
     children.emplace_back();

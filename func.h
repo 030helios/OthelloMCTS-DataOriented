@@ -3,12 +3,11 @@
 #include "config"
 #include <array>
 #include <vector>
-#include <cstring>
 using namespace std;
 
-extern int8_t Ishuffled[BoardSize * BoardSize];
-extern int8_t Jshuffled[BoardSize * BoardSize];
-
+extern int8_t *Ishuffled;
+extern int8_t *Jshuffled;
+extern int8_t moveSize;
 
 void tryleft(array<int8_t, BoardSize> &board, int8_t col, int8_t i, int8_t j, bool &legal);
 void tryright(array<int8_t, BoardSize> &board, int8_t col, int8_t i, int8_t j, bool &legal);

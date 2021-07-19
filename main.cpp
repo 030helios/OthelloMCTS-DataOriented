@@ -4,6 +4,7 @@
 #include "bot.h"
 #include <chrono>
 #include <thread>
+#include <cstring>
 #include <iostream>
 #include <algorithm>
 using namespace std;
@@ -20,9 +21,9 @@ void printboard(array<int8_t, BoardSize> board, string name)
     system(exe);
 }
 
-//An array of shuffled arrays filled with indexes
-int8_t Ishuffled[BoardSize * BoardSize];
-int8_t Jshuffled[BoardSize * BoardSize];
+int8_t *Ishuffled = new int8_t[BoardSize * BoardSize];
+int8_t *Jshuffled = new int8_t[BoardSize * BoardSize];
+int8_t moveSize;
 
 int main()
 {
@@ -40,32 +41,35 @@ int main()
     board[d - EdgeSize - 1] = 1;
     srand(system_clock::to_time_t(system_clock::now()));
 
-    array<pair<int8_t, int8_t>, BoardSize> moves;
-    for (int i = 0; i < EdgeSize; i++)
-        for (int j = 0; j < EdgeSize; j++)
-            moves[i * EdgeSize + j] = make_pair(i, j);
-
-    for (int ind = 0; ind < BoardSize; ind++)
-    {
-        random_shuffle(moves.begin(), moves.end());
-        for (int i = 0; i < BoardSize; i++)
-        {
-            Ishuffled[ind * BoardSize + i] = moves[i].first;
-            Jshuffled[ind * BoardSize + i] = moves[i].second;
-        }
-    }
     string ImgName = "Output_";
     int index = 0;
     int computerColor = 1; //black first
     printboard(board, ImgName + to_string(index) + ".jpg");
-    while (hasMove(board, 1) || hasMove(board, -1))
+    do
     {
+        vector<pair<int8_t, int8_t>> moves;
+        for (int8_t i = 0; i < EdgeSize; i++)
+            for (int8_t j = 0; j < EdgeSize; j++)
+                if (board[i * EdgeSize + j] == 0)
+                    moves.emplace_back(make_pair(i, j));
+        moveSize = moves.size();
+        for (int ind = 0; ind < moveSize; ind++)
+        {
+            random_shuffle(moves.begin(), moves.end());
+            for (int8_t i = 0; i < moveSize; i++)
+            {
+                Ishuffled[ind * moveSize + i] = moves[i].first;
+                Jshuffled[ind * moveSize + i] = moves[i].second;
+            }
+        }
         cout << "Round " << index << endl;
         Bot bot(timeLimit, threadCount, board, computerColor);
         board = bot.play();
         computerColor = -computerColor;
         printboard(board, ImgName + to_string(++index) + ".jpg");
-    }
+    } while (hasMove(board, 1) || hasMove(board, -1));
     cout << "Winner: " << (score(board) == 1 ? "Black" : "White") << endl;
+    free(Ishuffled);
+    free(Jshuffled);
     return 0;
 }
